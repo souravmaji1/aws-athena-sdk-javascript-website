@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Athena Query Results</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+/* Style for the form elements */
+textarea, input[type="text"], input[type="number"], button {
+  display: block;
+  width: -webkit-fill-available;
+  margin-bottom: 10px;
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 5px;
+  border: 2px solid #ccc;
+}
+
+textarea:focus, input[type="text"]:focus, input[type="number"]:focus {
+  outline: none;
+  border-color: #0066CC;
+}
+
+button {
+  background-color: #111110;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+button:hover {
+  background-color: #4b4c4d;
+}
+h1{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Style for the form container */
+.home {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+/* Style for the query results container */
+#results {
+  overflow-x: auto;
+  margin-top: 20px;
+  padding: 20px;
+  background-color: #F5F5F5;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+.first{
+    display: block;
+    gap: 5px;
+    padding: 10px;
+    
+    border: 2px solid;
+}
+body{
+    background: black;
+}
+.second{
+    display: block;
+    gap: 5px;
+   
+    padding: 10px;
+    border: 2px solid;
+    margin-bottom: 20px;
+}
+table {
+			border-collapse: collapse;
+			width: 100%;
+		}
+		th, td {
+			text-align: left;
+			padding: 8px;
+			border: 1px solid black;
+		}
+		tr:nth-child(even) {
+			background-color: #f2f2f2;
+		}
+        .home{
+            background: darkgoldenrod;
+        }
+	</style>
+</head>
+<body>
+	<div class="home">
+	
+	<h1>LEADS GPT</h1>
+	<div class="mid">
+	<form>
+		<label for="query">Query:</label><br>
+		<textarea id="query" name="query" rows="10" cols="50">SELECT * FROM "website"."connectweb" LIMIT 10;</textarea><br>
+        <div class="first">
+		<label>Select Columns:</label><br>
+		<label for="company">Company</label>
+		<input type="checkbox" id="company" name="filter" value="company">
+		<label for="email">Email</label>
+		<input type="checkbox" id="email" name="filter" value="email">
+		<label for="phone">Phone</label>
+		<input type="checkbox" id="phone" name="filter" value="phone">
+		<label for="first">First</label>
+		<input type="checkbox" id="first" name="filter" value="first">
+        <label for="address">ADDRESS</label>
+		<input type="checkbox" id="address" name="filter" value="address">
+		<label for="city">CITY</label>
+		<input type="checkbox" id="city" name="filter" value="city">
+		<label for="zip">ZIP</label>
+		<input type="checkbox" id="zip" name="filter" value="zip">
+		<label for="gender">GENDER</label>
+		<input type="checkbox" id="gender" name="filter" value="gender"><br>
+        </div>
+        <div class="second">
+		<label>Select Query Type:</label><br>
+		<input type="radio" id="single" name="queryType" value="single" checked>
+		<label for="single">Single Select</label>
+		<input type="radio" id="multiple" name="queryType" value="multiple">
+		<label for="multiple">Multiple Select</label>
+		<input type="radio" id="none" name="queryType" value="none">
+		<label for="none">None</label><br>
+        </div>
+        <label for="where">CONDITION:</label>
+<input type="text" id="where" name="where">
+
+<label for="and">CONDITION TWO:</label>
+<input type="text" id="and" name="and">
+
+<label for="ands">AND:</label>
+<input type="text" id="ands" name="ands">
+
+<label for="like">CATEGORY:</label>
+<input type="text" id="like" name="like">
+
+        <div class="s">
+        <label for="limit">Limit:</label>
+        <input type="number" id="limit" name="limit" value="10" min="1" max="100">
+        <button type="button" onclick="increaseLimit()">+</button>
+        <button type="button" onclick="decreaseLimit()">-</button>
+        </div>
+		<button type="button" onclick="runQuery()">Run Query</button>
+	</form>
+	</div>
+	<div id="results"></div>
+	</div>
+	
+
+	<script src="https://sdk.amazonaws.com/js/aws-sdk-2.996.0.min.js"></script>
+	<script>
+        function increaseLimit() {
+    var limitField = document.getElementById('limit');
+    limitField.value = parseInt(limitField.value) + 1;
+}
+
+function decreaseLimit() {
+    var limitField = document.getElementById('limit');
+    limitField.value = parseInt(limitField.value) - 1;
+    if (limitField.value < 1) {
+        limitField.value = 1;
+    }
+}
+
+		// Set up AWS credentials
+		AWS.config.region = 'us-east-1';
+        AWS.config.credentials = new AWS.Credentials('AKIAQ6FLTJRLMI4C', 'T2luxgWfcGvnHB/GFBeRlgJIUQU3tCluwVew');
+		function runQuery() {
+    var queryType = document.querySelector('input[name="queryType"]:checked').value;
+    var selectedFilters = [];
+    if (queryType == 'single') {
+        var limit = document.getElementById('limit').value;
+        var query = 'SELECT ';
+        var filters = document.getElementsByName('filter');
+        for (var i = 0; i < filters.length; i++) {
+            if (filters[i].checked) {
+                selectedFilters.push(filters[i].value);
+            }
+        }
+        if (selectedFilters.length > 0) {
+            query += selectedFilters.join(', ');
+        } else {
+            query += '*';
+        }
+        query += ' FROM "website"."connectweb"';
+
+        // Retrieve user input for WHERE, ADD, and LIKE values
+        var whereValue = document.getElementById('where').value;
+        var andValue = document.getElementById('and').value;
+        var likeValue = document.getElementById('like').value;
+        var andsValue = document.getElementById('ands').value;
+
+        // Add WHERE, ADD, and LIKE clauses to the query string if user input is provided
+        if (whereValue) {
+            query += ' WHERE ' + whereValue;
+        }
+        if (andValue) {
+            query += ' AND ' + andValue;
+        }
+        if (andsValue) {
+            query += ' AND ' + andsValue;
+        }
+        if (likeValue) {
+            query += ' LIKE ' + "'" +'%' + likeValue + '%' + "'";
+        }
+
+        query += ' LIMIT ' + limit + ';';
+    } else if (queryType == 'multiple') {
+        selectedFilters = document.getElementById('query').value.split(',').map(function(item) {
+            return item.trim();
+        });
+        query = 'SELECT ' + selectedFilters.join(', ') + ' FROM "website"."connectweb" LIMIT 10;';
+    } else {
+        query = 'SELECT * FROM "website"."connectweb" LIMIT 10;';
+    }
+
+    document.getElementById('query').value = query;
+    var params = {
+        QueryString: query,
+        ResultConfiguration: {
+            OutputLocation: 's3://consumer-athena/query-output/'
+        }
+    };
+
+            var athena = new AWS.Athena();
+
+            athena.startQueryExecution(params, function(err, data) {
+                if (err) {
+                    console.log(err, err.stack);
+                } else {
+                    checkQueryStatus(data.QueryExecutionId);
+                }
+            });
+        }
+
+        function checkQueryStatus(queryId) {
+            var athena = new AWS.Athena();
+
+            athena.getQueryExecution({ QueryExecutionId: queryId }, function(err, data) {
+                if (err) {
+                    console.log(err, err.stack);
+                } else {
+                    var status = data.QueryExecution.Status.State;
+                    if (status == 'QUEUED' || status == 'RUNNING') {
+                        setTimeout(function() { checkQueryStatus(queryId); }, 5000);
+                    } else if (status == 'SUCCEEDED') {
+                        getQueryResults(queryId);
+                    } else {
+                        window.alert('Query failed: ' + data.QueryExecution.Status.StateChangeReason);
+                    }
+                }
+            });
+        }
+
+        function getQueryResults(queryId) {
+    var athena = new AWS.Athena();
+
+    athena.getQueryResults({ QueryExecutionId: queryId }, function(err, data) {
+        if (err) {
+            console.log(err, err.stack);
+        } else {
+            var results = document.getElementById('results');
+            results.innerHTML = '';
+
+            if (data.ResultSet.Rows.length == 0) {
+                results.innerHTML = '<p>No results found.</p>';
+                return;
+            }
+
+            var table = document.createElement('table');
+
+            // Create table header row
+            var headerRow = document.createElement('tr');
+            data.ResultSet.ResultSetMetadata.ColumnInfo.forEach(function(column) {
+                var headerCell = document.createElement('th');
+                headerCell.appendChild(document.createTextNode(column.Name));
+                headerRow.appendChild(headerCell);
+            });
+            table.appendChild(headerRow);
+
+            // Create table data rows
+            data.ResultSet.Rows.forEach(function(row) {
+                var dataRow = document.createElement('tr');
+                row.Data.forEach(function(cell) {
+                    var dataCell = document.createElement('td');
+                    dataCell.appendChild(document.createTextNode(cell.VarCharValue));
+                    dataRow.appendChild(dataCell);
+                });
+                table.appendChild(dataRow);
+            });
+
+            results.appendChild(table);
+        }
+    });
+}
+
+</script>
+</body>
+</html>
+
+

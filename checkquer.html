@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Athena Query Results</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+		table {
+			border-collapse: collapse;
+			width: 100%;
+		}
+		th, td {
+			text-align: left;
+			padding: 8px;
+			border: 1px solid black;
+		}
+		tr:nth-child(even) {
+			background-color: #f2f2f2;
+		}
+		.mid{
+			display: flex;
+    align-items: center;
+    justify-content: center;
+		}
+		button{
+			display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: auto;
+		}
+		h1{
+			display: flex;
+    align-items: center;
+    justify-content: center;
+		}
+		.home{
+			background: yellow;
+    padding: 50px;
+    border-radius: 40px;
+    width: auto;
+		}
+	</style>
+</head>
+<body>
+	<div class="home">
+	
+	<h1>Athena Query Results</h1>
+	<div class="mid">
+	<form>
+		<label for="query">Query:</label><br>
+		<textarea id="query" name="query" rows="10" cols="50"></textarea><br>
+		<label for="company">Company</label>
+		<input type="checkbox" id="company" name="filter" value="company">
+		<label for="phone">Phone</label>
+		<input type="checkbox" id="phone" name="filter" value="phone">
+		<label for="first">First</label>
+		<input type="checkbox" id="first" name="filter" value="first">
+		<button type="button" onclick="runQuery()">Run Query</button>
+	</form>
+	</div>
+	<div id="results"></div>
+	</div>
+	
+
+	<script src="https://sdk.amazonaws.com/js/aws-sdk-2.996.0.min.js"></script>
+	<script>
+		// Set up AWS credentials
+		AWS.config.region = 'us-east-1';
+		AWS.config.credentials = new AWS.Credentials('AKIAQ6FXLJRLMI4C', 'T2luxgWfcGvn/EizBGFBeRlgJIUQU3tCluwVew');
+
+		function runQuery() {
+			var query = 'SELECT ';
+			var filters = document.getElementsByName('filter');
+			var selectedFilters = [];
+			for (var i = 0; i < filters.length; i++) {
+				if (filters[i].checked) {
+					selectedFilters.push(filters[i].value);
+				}
+			}
+			if (selectedFilters.length == 0) {
+				query += '* ';
+			} else {
+				query += selectedFilters.join(', ') + ' ';
+			}
+			query += 'FROM "website"."connectweb" LIMIT 10;';
+			document.getElementById('query').value = query;
+			var params = {
+				QueryString: query,
+				ResultConfiguration: {
+					OutputLocation: 's3://consumer-athena/query-result/'
+				}
+			};
+
+            var athena = new AWS.Athena();
+
+            athena.startQueryExecution(params, function(err, data) {
+                if (err) {
+                    console.log(err, err.stack);
+                } else {
+                    checkQueryStatus(data.QueryExecutionId);
+                }
+            });
+        }
+
+        function checkQueryStatus(queryId) {
+            var athena = new AWS.Athena();
+
+            athena.getQueryExecution({ QueryExecutionId: queryId }, function(err, data) {
+                if (err) {
+                    console.log(err, err.stack);
+                } else {
+                    var status = data.QueryExecution.Status.State;
+                    if (status == 'QUEUED' || status == 'RUNNING') {
+                        setTimeout(function() { checkQueryStatus(queryId); }, 5000);
+                    } else if (status == 'SUCCEEDED') {
+                        getQueryResults(queryId);
+                    } else {
+                        console.log('Query failed: ' + data.QueryExecution.Status.StateChangeReason);
+                    }
+                }
+            });
+        }
+
+        function getQueryResults(queryId) {
+    var athena = new AWS.Athena();
+
+    athena.getQueryResults({ QueryExecutionId: queryId }, function(err, data) {
+        if (err) {
+            console.log(err, err.stack);
+        } else {
+            var results = document.getElementById('results');
+            results.innerHTML = '';
+
+            if (data.ResultSet.Rows.length == 0) {
+                results.innerHTML = '<p>No results found.</p>';
+                return;
+            }
+
+            var table = document.createElement('table');
+
+            // Create table header row
+            var headerRow = document.createElement('tr');
+            data.ResultSet.ResultSetMetadata.ColumnInfo.forEach(function(column) {
+                var headerCell = document.createElement('th');
+                headerCell.appendChild(document.createTextNode(column.Name));
+                headerRow.appendChild(headerCell);
+            });
+            table.appendChild(headerRow);
+
+            // Create table data rows
+            data.ResultSet.Rows.forEach(function(row) {
+                var dataRow = document.createElement('tr');
+                row.Data.forEach(function(cell) {
+                    var dataCell = document.createElement('td');
+                    dataCell.appendChild(document.createTextNode(cell.VarCharValue));
+                    dataRow.appendChild(dataCell);
+                });
+                table.appendChild(dataRow);
+            });
+
+            results.appendChild(table);
+        }
+    });
+}
+
+</script>
+</body>
+</html>
+
+
